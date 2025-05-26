@@ -19,3 +19,5 @@ Este repositorio contiene la implementación y documentación de la primera entr
 1. Navega al directorio `flask-app/`:
    ```bash
    cd flask-app
+   Pendiente de modificar
+   
