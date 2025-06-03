@@ -1,25 +1,22 @@
-from fastapi import FastAPI, HTTPException, Depends, status
-from fastapi.security import HTTPBasic, HTTPBasicCredentials
-import secrets
+from fastapi import FastAPI, Header, HTTPException, Request
+from fastapi.responses import JSONResponse
+from typing import Optional
 
-app = FastAPI(
-    title="API Segura con FastAPI",
-    description="Ejemplo de autenticación básica con FastAPI y documentación automática OpenAPI",
-    version="1.0.0"
-)
+app = FastAPI()
 
-security = HTTPBasic()
+# Claves API válidas y direcciones IP autorizadas
+VALID_API_KEYS = ["12345ABC"]
+ALLOWED_IPS = ["127.0.0.1"]
 
-def verify_credentials(credentials: HTTPBasicCredentials = Depends(security)):
-    # Verifica que el usuario y la contraseña coincidan con lo esperado
-    if not (secrets.compare_digest(credentials.username, "admin") and secrets.compare_digest(credentials.password, "secret")):
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Credenciales inválidas",
-            headers={"WWW-Authenticate": "Basic"},
-        )
-    return credentials.username
+@app.get("/fastapi/api-key", tags=["API Key"])
+def fastapi_api_key(x_api_key: Optional[str] = Header(None)):
+    if x_api_key != "12345ABC":
+        raise HTTPException(status_code=401, detail="API Key inválida")
+    return {"mensaje": "Acceso con API Key concedido en FastAPI!"}
 
-@app.get("/api/protegida", tags=["Protegida"])
-def protected_endpoint(user: str = Depends(verify_credentials)):
-    return {"mensaje": f"Acceso concedido a {user}!"}
+@app.middleware("http")
+async def ip_filter(request: Request, call_next):
+    client_ip = request.client.host
+    if client_ip not in ALLOWED_IPS:
+        return JSONResponse(status_code=403, content={"detail": "Acceso denegado: IP no autorizada"})
+    return await call_next(request)
